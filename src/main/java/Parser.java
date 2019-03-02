@@ -37,7 +37,7 @@ public class Parser {
             System.out.println("======= CHUNK " + chunk + "===============");
             List<Picture> horizontalSlides = new ArrayList<>();
             List<Picture> verticalSlides = new ArrayList<>();
-            for (int i = 80_000 + CHUNK_SIZE * chunk; i < 80_000 + CHUNK_SIZE * (chunk + 1); i++) {
+            for (int i = CHUNK_SIZE * chunk; i < CHUNK_SIZE * (chunk + 1); i++) {
                 Picture picture = new Picture(i, lines.get(i).split(" "));
                 if (picture.orientation == Orientation.HORIZONTAL) {
                     horizontalSlides.add(picture);
@@ -80,6 +80,7 @@ public class Parser {
         while (true) {
 
             List<Tuple> tuples = new ArrayList<>();
+
             graph.forEach((slide, node) -> {
                 if (node.slide.equals(first.get())) {
                     tuples.add(new Tuple(slide, node));
