@@ -113,7 +113,7 @@ public class Parser {
     }
 
     private static String formatResult(Collection<Slide> slides) {
-        return slides.size() + "\n" + slides.stream().map(s -> s.picture1.id + " " + s.picture2.id).collect(joining("\n"));
+        return slides.size() + "\n" + slides.stream().map(s -> s.picture1.id + (s.picture2 != null ? " " + s.picture2.id : "")).collect(joining("\n"));
     }
 
     private static Optional<Tuple> findBest(List<Slide> singlePics, ListMultimap<Slide, Node> multiMap) {
