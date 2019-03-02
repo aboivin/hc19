@@ -1,6 +1,6 @@
-import static java.util.Comparator.comparing;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ListMultimap;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,8 +14,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
+
+import static java.util.Comparator.comparing;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 public class Parser {
 
@@ -31,11 +33,11 @@ public class Parser {
         List<String> lines = Files.lines(Paths.get(D_PATH)).skip(1).collect(toList());
 
         Collection<Slide> slideShow = Collections.synchronizedCollection(new ArrayList<>());
-        IntStream.range(0, 4).parallel().forEach(chunk -> {
+        IntStream.range(0, 2).parallel().forEach(chunk -> {
             System.out.println("======= CHUNK " + chunk + "===============");
             List<Picture> horizontalSlides = new ArrayList<>();
             List<Picture> verticalSlides = new ArrayList<>();
-            for (int i = CHUNK_SIZE * chunk; i < CHUNK_SIZE * (chunk + 1); i++) {
+            for (int i = 80_000 + CHUNK_SIZE * chunk; i < 80_000 + CHUNK_SIZE * (chunk + 1); i++) {
                 Picture picture = new Picture(i, lines.get(i).split(" "));
                 if (picture.orientation == Orientation.HORIZONTAL) {
                     horizontalSlides.add(picture);
