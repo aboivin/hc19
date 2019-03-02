@@ -1,12 +1,11 @@
+import static java.util.stream.Collectors.toList;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
-
-import static java.util.stream.Collectors.toList;
+import java.util.concurrent.ConcurrentHashMap;
 
 class Picture {
 
@@ -16,9 +15,9 @@ class Picture {
 
     public final String id;
 
-    private static long index = 0;
+    private long index = 0;
 
-    public static Map<String, Long> keywordsMap = new HashMap<>();
+    public static Map<String, Long> keywordsMap = new ConcurrentHashMap<>();
 
     public Picture(int id, String[] arrays) {
         this.id = String.valueOf(id);

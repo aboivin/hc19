@@ -5,7 +5,7 @@ public class Node {
 
     public final Slide slide;
 
-    public long score = 0;
+    public final long score;
 
     public Node(Slide slide, long score) {
         this.slide = slide;

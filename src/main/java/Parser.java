@@ -1,20 +1,21 @@
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
-
+import static java.util.Comparator.comparing;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static java.util.Comparator.comparing;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
+import java.util.stream.IntStream;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ListMultimap;
 
 public class Parser {
 
@@ -24,58 +25,61 @@ public class Parser {
     private static final String D_PATH = "/home/aboivin/workspace/hc19/src/main/resources/d_pet_pictures.txt";
     private static final String E_PATH = "/home/aboivin/workspace/hc19/src/main/resources/e_shiny_selfies.txt";
 
-    private static List<Picture> pictures = new ArrayList<>();
-    private static List<Picture> vertical = new ArrayList<>();
+    private static final int CHUNK_SIZE = 5000;
 
     public static void main(String[] args) throws IOException {
-        List<String> lines = Files.lines(Paths.get(E_PATH)).skip(1).collect(toList());
-        for (int i = 0; i < lines.size(); i++) {
-            if (i == 0 || i>6000 || i<3000) {
-                continue;
-            }
-            Picture picture = new Picture(i, lines.get(i).split(" "));
-         //   if(picture.orientation == Orientation.HORIZONTAL) {
-                pictures.add(picture);
-           // } else {
-             //   vertical.add(picture);
-           // }
-        }
+        List<String> lines = Files.lines(Paths.get(D_PATH)).skip(1).collect(toList());
 
-        List<Slide> singlePics = new ArrayList<>();
-        for (int i = 0; i < pictures.size(); i=i+2) {
-            singlePics.add(new Slide(pictures.get(i), pictures.get(i+1)));
-        }
-//        List<Slide> singlePics = pictures.stream().map(Slide::new).collect(toList());
-
-        ListMultimap<Slide, Node> multiMap = ArrayListMultimap.create();
-        int i = 0;
-        for (Slide slide1 : singlePics) {
-            for (Slide slide2 : singlePics) {
-                if(i++ % 100 == 0) {
-                    System.out.println(i);
+        Collection<Slide> slideShow = Collections.synchronizedCollection(new ArrayList<>());
+        IntStream.range(0, 4).parallel().forEach(chunk -> {
+            System.out.println("======= CHUNK " + chunk + "===============");
+            List<Picture> horizontalSlides = new ArrayList<>();
+            List<Picture> verticalSlides = new ArrayList<>();
+            for (int i = CHUNK_SIZE * chunk; i < CHUNK_SIZE * (chunk + 1); i++) {
+                Picture picture = new Picture(i, lines.get(i).split(" "));
+                if (picture.orientation == Orientation.HORIZONTAL) {
+                    horizontalSlides.add(picture);
+                } else {
+                    verticalSlides.add(picture);
                 }
-                multiMap.put(slide1, new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
             }
-        }
 
-//        List<Slide> slides = new ArrayList<>();
-//        slides.add(new Slide(pictures.get(0)));
-//        slides.add(new Slide(pictures.get(3)));
-//        slides.add(new Slide(pictures.get(1), pictures.get(2)));
-//        long score = computeScore(slides);
-//
+            List<Slide> allSlides = createSlides(horizontalSlides, verticalSlides);
+            List<Slide> slides = generateSlideShow(allSlides);
+            slideShow.addAll(slides);
+        });
+        String result = formatResult(slideShow);
+        write(result);
+    }
+
+    private static List<Slide> createSlides(List<Picture> horizontalSlides, List<Picture> verticalSlides) {
+        List<Slide> verticalPics = new ArrayList<>();
+        for (int i = 0; i < verticalSlides.size(); i = i + 2) {
+            if (i == verticalSlides.size() - 1) {
+                break;
+            }
+            verticalPics.add(new Slide(verticalSlides.get(i), verticalSlides.get(i + 1)));
+        }
+        List<Slide> horizontalPics = horizontalSlides.stream().map(Slide::new).collect(toList());
+
+        List<Slide> allSlides = new ArrayList<>();
+        allSlides.addAll(horizontalPics);
+        allSlides.addAll(verticalPics);
+        return allSlides;
+    }
+
+    private static List<Slide> generateSlideShow(List<Slide> fullSlides) {
+        ListMultimap<Slide, Node> graph = buildGraph(fullSlides);
 
         List<Slide> slides = new ArrayList<>();
-
         Comparator<Tuple> comparing = comparing(tuple -> tuple.node.score);
-        Comparator<Node> comparing2 = comparing(node -> node.score);
         int bip = 0;
-        final AtomicReference<Slide> first = new AtomicReference<>(findBest(singlePics, multiMap).get().slide);
+        final AtomicReference<Slide> first = new AtomicReference<>(findBest(fullSlides, graph).get().slide);
         while (true) {
 
             List<Tuple> tuples = new ArrayList<>();
-            multiMap.forEach((slide,node) -> {
-                if(node.slide.equals(first.get())) {
+            graph.forEach((slide, node) -> {
+                if (node.slide.equals(first.get())) {
                     tuples.add(new Tuple(slide, node));
                 }
             });
@@ -85,17 +89,31 @@ public class Parser {
             }
 
             first.set(first1.get().slide);
-            System.out.println(bip++);
+            if (bip++ % 100 == 0) {
+                System.out.println(bip);
+            }
 
             slides.add(first.get());
 
-            multiMap.removeAll(first.get());
-            multiMap.asMap().values().remove(first.get());
+            graph.removeAll(first.get());
+            graph.asMap().values().remove(first.get());
         }
-        String result = slides.size() + "\n" + slides.stream().map(s -> s.picture1.id + " " + s.picture2).collect(joining("\n"));
-          write(result);
+        return slides;
+    }
 
-//        System.out.println(first);
+    private static ListMultimap<Slide, Node> buildGraph(List<Slide> singlePics) {
+        ListMultimap<Slide, Node> multiMap = ArrayListMultimap.create();
+        for (Slide slide1 : singlePics) {
+            for (Slide slide2 : singlePics) {
+                multiMap.put(slide1, new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
+            }
+        }
+        System.out.println("Graph built.");
+        return multiMap;
+    }
+
+    private static String formatResult(Collection<Slide> slides) {
+        return slides.size() + "\n" + slides.stream().map(s -> s.picture1.id + " " + s.picture2.id).collect(joining("\n"));
     }
 
     private static Optional<Tuple> findBest(List<Slide> singlePics, ListMultimap<Slide, Node> multiMap) {
