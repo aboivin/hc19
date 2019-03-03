@@ -1,6 +1,6 @@
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
-
+import static java.util.Comparator.comparing;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -10,14 +10,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
-
-import static java.util.Comparator.comparing;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 public class Parser {
 
@@ -27,13 +25,13 @@ public class Parser {
     private static final String D_PATH = "/home/aboivin/workspace/hc19/src/main/resources/d_pet_pictures.txt";
     private static final String E_PATH = "/home/aboivin/workspace/hc19/src/main/resources/e_shiny_selfies.txt";
 
-    private static final int CHUNK_SIZE = 5000;
+    private static final int CHUNK_SIZE = 3_000;
 
     public static void main(String[] args) throws IOException {
-        List<String> lines = Files.lines(Paths.get(D_PATH)).skip(1).collect(toList());
+        List<String> lines = Files.lines(Paths.get(B_PATH)).skip(1).collect(toList());
 
         Collection<Slide> slideShow = Collections.synchronizedCollection(new ArrayList<>());
-        IntStream.range(0, 2).parallel().forEach(chunk -> {
+        IntStream.range(0, 1).parallel().forEach(chunk -> {
             System.out.println("======= CHUNK " + chunk + "===============");
             List<Picture> horizontalSlides = new ArrayList<>();
             List<Picture> verticalSlides = new ArrayList<>();
@@ -71,58 +69,62 @@ public class Parser {
     }
 
     private static List<Slide> generateSlideShow(List<Slide> fullSlides) {
-        ListMultimap<Slide, Node> graph = buildGraph(fullSlides);
+        Map<Slide, List<Node>> graph = buildGraph(fullSlides);
 
         List<Slide> slides = new ArrayList<>();
-        Comparator<Tuple> comparing = comparing(tuple -> tuple.node.score);
+        Comparator<Node> scoreComparator = comparing(node -> node.score);
         int bip = 0;
-        final AtomicReference<Slide> first = new AtomicReference<>(findBest(fullSlides, graph).get().slide);
+        final AtomicReference<Slide> currentSlide = new AtomicReference<>(findBest(graph).get().slide);
+        slides.add(currentSlide.get());
         while (true) {
+            List<Node> nextNodes = graph.get(currentSlide.get());
+            graph.remove(currentSlide.get());
 
-            List<Tuple> tuples = new ArrayList<>();
-
-            graph.forEach((slide, node) -> {
-                if (node.slide.equals(first.get())) {
-                    tuples.add(new Tuple(slide, node));
-                }
-            });
-            Optional<Tuple> first1 = tuples.stream().sorted(comparing.reversed()).findFirst();
-            if (!first1.isPresent()) {
+//            nextNodes.removeIf(node -> slides.contains(node.slide));
+            Optional<Node> nextNode = nextNodes.stream().sorted(scoreComparator.reversed()).findFirst();
+            if (!nextNode.isPresent()) {
                 break;
             }
 
-            first.set(first1.get().slide);
+            Slide nextSlide = nextNode.get().slide;
+            if(nextNode.get().score == 0) {
+                nextSlide = findBest(graph).map(t -> t.slide).get();
+            }
+
+            graph.values().forEach(l -> l.removeIf(node -> node.slide.equals(currentSlide.get())));
+
+            currentSlide.set(nextSlide);
             if (bip++ % 100 == 0) {
                 System.out.println(bip);
             }
 
-            slides.add(first.get());
-
-            graph.removeAll(first.get());
-            graph.asMap().values().remove(first.get());
+            slides.add(currentSlide.get());
         }
         return slides;
     }
 
-    private static ListMultimap<Slide, Node> buildGraph(List<Slide> singlePics) {
-        ListMultimap<Slide, Node> multiMap = ArrayListMultimap.create();
-        for (Slide slide1 : singlePics) {
-            for (Slide slide2 : singlePics) {
-                multiMap.put(slide1, new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
+    private static Map<Slide, List<Node>> buildGraph(List<Slide> slides) {
+        Map<Slide, List<Node>> multimap = new HashMap<>();
+        for (Slide slide1 : slides) {
+            for (Slide slide2 : slides) {
+                if(slide1 != slide2) {
+                    List<Node> list = multimap.computeIfAbsent(slide1, s -> new ArrayList<>());
+                    list.add(new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
+                }
             }
         }
         System.out.println("Graph built.");
-        return multiMap;
+        return multimap;
     }
 
     private static String formatResult(Collection<Slide> slides) {
         return slides.size() + "\n" + slides.stream().map(s -> s.picture1.id + (s.picture2 != null ? " " + s.picture2.id : "")).collect(joining("\n"));
     }
 
-    private static Optional<Tuple> findBest(List<Slide> singlePics, ListMultimap<Slide, Node> multiMap) {
+    private static Optional<Tuple> findBest(Map<Slide, List<Node>> multiMap) {
         Comparator<Tuple> comparing = comparing(tuple -> tuple.node.score);
         Comparator<Node> comparing2 = comparing(node -> node.score);
-        return singlePics.stream().map(slide -> {
+        return multiMap.keySet().stream().map(slide -> {
             List<Node> nodes = multiMap.get(slide);
             Node node = nodes.stream().sorted(comparing2.reversed()).findFirst().get();
             return new Tuple(slide, node);

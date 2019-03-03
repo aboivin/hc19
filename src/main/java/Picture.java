@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 class Picture {
 
@@ -15,7 +16,7 @@ class Picture {
 
     public final String id;
 
-    private long index = 0;
+    private static AtomicLong index = new AtomicLong(0);
 
     public static Map<String, Long> keywordsMap = new ConcurrentHashMap<>();
 
@@ -23,7 +24,7 @@ class Picture {
         this.id = String.valueOf(id);
         this.orientation = arrays[0].equals("V") ? Orientation.VERTICAL : Orientation.HORIZONTAL;
         List<String> kw = Arrays.stream(arrays).skip(2).collect(toList());
-        this.keywords = kw.stream().map(s -> keywordsMap.computeIfAbsent(s, st -> index++)).sorted().collect(toList());
+        this.keywords = kw.stream().map(s -> keywordsMap.computeIfAbsent(s, st -> index.getAndIncrement())).sorted().collect(toList());
     }
 
     @Override
