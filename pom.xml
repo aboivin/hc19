@@ -48,6 +48,7 @@
             <mainClass>Parser</mainClass>
             <arguments>
                 <argument>-Xmx10g</argument>
+                <argument>-Xms10g</argument>
             </arguments>
         </configuration>
     </plugin>
