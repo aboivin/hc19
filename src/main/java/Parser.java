@@ -24,13 +24,13 @@ public class Parser {
     private static final String D_PATH = "/home/aboivin/workspace/hc19/src/main/resources/d_pet_pictures.txt";
     private static final String E_PATH = "/home/aboivin/workspace/hc19/src/main/resources/e_shiny_selfies.txt";
 
-    private static final int CHUNK_SIZE = 10_000;
+    private static final int CHUNK_SIZE = 20_000;
 
     public static void main(String[] args) throws IOException {
-        List<String> lines = Files.lines(Paths.get(B_PATH)).skip(1).collect(toList());
+        List<String> lines = Files.lines(Paths.get(E_PATH)).skip(1).collect(toList());
 
         Collection<Slide> slideShow = Collections.synchronizedCollection(new ArrayList<>());
-        IntStream.range(0, 8).forEach(chunk -> {
+        IntStream.range(0, 4).forEach(chunk -> {
             System.out.println("======= CHUNK " + chunk + "===============");
             List<Picture> horizontalSlides = new ArrayList<>();
             List<Picture> verticalSlides = new ArrayList<>();
@@ -48,16 +48,34 @@ public class Parser {
             slideShow.addAll(slides);
         });
         String result = formatResult(slideShow);
+        System.out.println(computeScore(new ArrayList<>(slideShow)));
         write(result);
     }
 
     private static List<Slide> createSlides(List<Picture> horizontalSlides, List<Picture> verticalSlides) {
+        int mean = 2 * (int) verticalSlides.stream().mapToInt(v -> v.keywords.size()).average().getAsDouble();
+        int diff = 0;
         List<Slide> verticalPics = new ArrayList<>();
-        for (int i = 0; i < verticalSlides.size(); i = i + 2) {
-            if (i == verticalSlides.size() - 1) {
-                break;
+        List<Picture> donePics = new ArrayList<>();
+        int bip = 0;
+        while (verticalSlides.size() - donePics.size() > 1) {
+            for (Picture v1 : verticalSlides) {
+                f2: for (Picture v2 : verticalSlides) {
+                    if(bip++ % 10_000 == 0) {
+                        System.out.println(bip-1 + " " + donePics.size());
+                    }
+                    if (v1 != v2 && !donePics.contains(v2) && !donePics.contains(v1)) {
+                        Slide slide = new Slide(v1, v2);
+                        if (slide.matchMean(mean, diff)) {
+                            verticalPics.add(slide);
+                            donePics.add(v1);
+                            donePics.add(v2);
+                            break f2;
+                        }
+                    }
+                }
             }
-            verticalPics.add(new Slide(verticalSlides.get(i), verticalSlides.get(i + 1)));
+            diff++;
         }
         List<Slide> horizontalPics = horizontalSlides.stream().map(Slide::new).collect(toList());
 
@@ -88,7 +106,7 @@ public class Parser {
             }
 
             Slide nextSlide = bestNode.slide;
-            if(bestNode.score == 0) {
+            if (bestNode.score == 0) {
                 nextSlide = findBest(graph).map(t -> t.slide).get();
             }
 
@@ -107,11 +125,11 @@ public class Parser {
         Map<Slide, PriorityQueue<Node>> multimap = new HashMap<>();
         for (Slide slide1 : slides) {
             for (Slide slide2 : slides) {
-                if(slide1 != slide2) {
+                if (slide1 != slide2) {
                     PriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> new PriorityQueue<>());
                     queue.add(new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
                 }
-                if(i++ % 1_000_000 == 0) {
+                if (i++ % 1_000_000 == 0) {
                     System.out.println(i);
                 }
             }
@@ -134,7 +152,7 @@ public class Parser {
         Tuple best = null;
         int score = -1;
         for (Tuple bestTuple : bestTuples) {
-            if(bestTuple.node.score > score) {
+            if (bestTuple.node.score > score) {
                 best = bestTuple;
             }
         }

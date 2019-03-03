@@ -1,3 +1,4 @@
+import static java.util.stream.Collectors.toList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -14,7 +15,7 @@ public class Slide {
         this.picture2 = picture2;
         List<Long> keywords = new ArrayList<>(picture1.keywords);
         keywords.addAll(picture2.keywords);
-        this.keywords = keywords;
+        this.keywords = keywords.stream().distinct().collect(toList());
     }
 
 
@@ -45,5 +46,11 @@ public class Slide {
     @Override
     public int hashCode() {
         return Objects.hash(picture1);
+    }
+
+    public boolean matchMean(int mean, int diff) {
+        int size = keywords.size();
+        int center = size - mean;
+        return center <= diff && -diff <= center;
     }
 }
