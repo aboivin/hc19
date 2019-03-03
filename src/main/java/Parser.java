@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
@@ -52,36 +53,45 @@ public class Parser {
         write(result);
     }
 
-    private static List<Slide> createSlides(List<Picture> horizontalSlides, List<Picture> verticalSlides) {
-        int mean = 2 * (int) verticalSlides.stream().mapToInt(v -> v.keywords.size()).average().getAsDouble();
-        int diff = 0;
-        List<Slide> verticalPics = new ArrayList<>();
-        List<Picture> donePics = new ArrayList<>();
-        int bip = 0;
-        while (verticalSlides.size() - donePics.size() > 1) {
-            for (Picture v1 : verticalSlides) {
-                f2: for (Picture v2 : verticalSlides) {
-                    if(bip++ % 10_000 == 0) {
-                        System.out.println(bip-1 + " " + donePics.size());
-                    }
-                    if (v1 != v2 && !donePics.contains(v2) && !donePics.contains(v1)) {
-                        Slide slide = new Slide(v1, v2);
-                        if (slide.matchMean(mean, diff)) {
-                            verticalPics.add(slide);
-                            donePics.add(v1);
-                            donePics.add(v2);
-                            break f2;
+    private static List<Slide> createSlides(List<Picture> horizontalPics, List<Picture> verticalPics) {
+        List<Slide> allSlides = new ArrayList<>();
+
+        OptionalDouble average = verticalPics.stream().mapToInt(v -> v.keywords.size()).average();
+        if(average.isPresent()) {
+            int threshold = (int) (2.5 * average.getAsDouble());
+            List<Slide> verticalSlides = new ArrayList<>();
+            int bip = 0;
+            while (verticalPics.size() > 1) {
+                int i = 0;
+                while (i < verticalPics.size()) {
+                    Picture v1 = verticalPics.get(i);
+                    Picture bestMatch = null;
+                    f2:
+                    for (Picture v2 : verticalPics) {
+                        if (bip++ % 1_000_000 == 0) {
+                            System.out.println(bip - 1 + " " + verticalSlides.size());
+                        }
+                        if (v1 != v2) {
+                            Slide slide = new Slide(v1, v2);
+                            if (slide.matchThreshold(threshold)) {
+                                bestMatch = v2;
+                                break f2;
+                            }
                         }
                     }
+                    if (bestMatch != null) {
+                        verticalSlides.add(new Slide(v1, bestMatch));
+                        verticalPics.remove(v1);
+                        verticalPics.remove(bestMatch);
+                    }
+                    i++;
                 }
+                threshold--;
             }
-            diff++;
+            allSlides.addAll(verticalSlides);
         }
-        List<Slide> horizontalPics = horizontalSlides.stream().map(Slide::new).collect(toList());
-
-        List<Slide> allSlides = new ArrayList<>();
-        allSlides.addAll(horizontalPics);
-        allSlides.addAll(verticalPics);
+        List<Slide> horizontalSlides = horizontalPics.stream().map(Slide::new).collect(toList());
+        allSlides.addAll(horizontalSlides);
         return allSlides;
     }
 

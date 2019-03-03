@@ -5,7 +5,7 @@ public class ScoreComputer {
     public static int computeScore(Slide slide1, Slide slide2) {
         int intersection = 0, diff1 = 0, diff2 = 0;
         int index1 = 0, index2 = 0;
-        Long left, right;
+        Integer left, right;
         boolean doneLeft = false, doneRight = false;
         while(!doneLeft || !doneRight) {
             left = slide1.keywords.get(index1);

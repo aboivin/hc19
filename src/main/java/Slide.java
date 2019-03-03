@@ -8,22 +8,25 @@ public class Slide {
 
     public final Picture picture1;
     public final Picture picture2;
-    public final List<Long> keywords;
+    public final List<Integer> keywords;
+    public final int doublon;
 
     public Slide(Picture picture1, Picture picture2) {
         this.picture1 = picture1;
         this.picture2 = picture2;
-        List<Long> keywords = new ArrayList<>(picture1.keywords);
+        List<Integer> keywords = new ArrayList<>(picture1.keywords);
         keywords.addAll(picture2.keywords);
         this.keywords = keywords.stream().distinct().collect(toList());
+        this.doublon = picture1.keywords.size() + picture2.keywords.size() - keywords.size();
     }
 
 
     public Slide(Picture picture1) {
         this.picture1 = picture1;
         this.picture2 = null;
-        List<Long> keywords = new ArrayList<>(picture1.keywords);
+        List<Integer> keywords = new ArrayList<>(picture1.keywords);
         this.keywords = keywords;
+        this.doublon = 0;
     }
 
     @Override
@@ -48,9 +51,7 @@ public class Slide {
         return Objects.hash(picture1);
     }
 
-    public boolean matchMean(int mean, int diff) {
-        int size = keywords.size();
-        int center = size - mean;
-        return center <= diff && -diff <= center;
+    public boolean matchThreshold(int threshold) {
+        return 40 * doublon <= threshold;
     }
 }

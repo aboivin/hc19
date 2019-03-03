@@ -1,27 +1,26 @@
 import static java.util.stream.Collectors.toList;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class Picture {
 
     public final Orientation orientation;
 
-    public final List<Long> keywords;
+    public final List<Integer> keywords;
 
-    public final String id;
+    public final int id;
 
-    private static AtomicLong index = new AtomicLong(0);
+    private static AtomicInteger index = new AtomicInteger(0);
 
-    public static Map<String, Long> keywordsMap = new ConcurrentHashMap<>();
+    public static Map<String, Integer> keywordsMap = new ConcurrentHashMap<>();
 
     public Picture(int id, String[] arrays) {
-        this.id = String.valueOf(id);
+        this.id = id;
         this.orientation = arrays[0].equals("V") ? Orientation.VERTICAL : Orientation.HORIZONTAL;
         List<String> kw = Arrays.stream(arrays).skip(2).collect(toList());
         this.keywords = kw.stream().map(s -> keywordsMap.computeIfAbsent(s, st -> index.getAndIncrement())).sorted().collect(toList());
@@ -33,13 +32,6 @@ class Picture {
                 .add("orientation=" + orientation)
                 .add("keywords=" + keywords)
                 .toString();
-    }
-
-    public long bytesToLong(byte[] bytes) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.put(bytes);
-        buffer.flip();
-        return buffer.getLong();
     }
 
     @Override
