@@ -30,7 +30,7 @@ public class Parser {
         List<String> lines = Files.lines(Paths.get(B_PATH)).skip(1).collect(toList());
 
         Collection<Slide> slideShow = Collections.synchronizedCollection(new ArrayList<>());
-        IntStream.range(0, 16).forEach(chunk -> {
+        IntStream.range(0, 8).forEach(chunk -> {
             System.out.println("======= CHUNK " + chunk + "===============");
             List<Picture> horizontalSlides = new ArrayList<>();
             List<Picture> verticalSlides = new ArrayList<>();
