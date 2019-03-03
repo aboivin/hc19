@@ -24,7 +24,7 @@ public class Parser {
     private static final String D_PATH = "/home/aboivin/workspace/hc19/src/main/resources/d_pet_pictures.txt";
     private static final String E_PATH = "/home/aboivin/workspace/hc19/src/main/resources/e_shiny_selfies.txt";
 
-    private static final int CHUNK_SIZE = 3_000;
+    private static final int CHUNK_SIZE = 20_000;
 
     public static void main(String[] args) throws IOException {
         List<String> lines = Files.lines(Paths.get(B_PATH)).skip(1).collect(toList());
@@ -78,13 +78,11 @@ public class Parser {
             PriorityQueue<Node> nextNodes = graph.get(currentSlide.get());
             graph.remove(currentSlide.get());
 
-//            nextNodes.removeIf(node -> slides.contains(node.slide));
             Node bestNode;
             do {
                 bestNode = nextNodes.poll();
             } while (bestNode != null && slides.contains(bestNode.slide));
 
-//            Optional<Node> nextNode = nextNodes.stream().sorted(scoreComparator.reversed()).findFirst();
             if (bestNode == null) {
                 break;
             }
@@ -94,10 +92,8 @@ public class Parser {
                 nextSlide = findBest(graph).map(t -> t.slide).get();
             }
 
-
-     //       graph.values().forEach(q -> q.removeIf(node -> node.slide.equals(currentSlide.get())));
             currentSlide.set(nextSlide);
-            if (bip++ % 100 == 0) {
+            if (bip++ % 1000 == 0) {
                 System.out.println(bip);
             }
 
@@ -107,12 +103,16 @@ public class Parser {
     }
 
     private static Map<Slide, PriorityQueue<Node>> buildGraph(List<Slide> slides) {
+        long i = 0;
         Map<Slide, PriorityQueue<Node>> multimap = new HashMap<>();
         for (Slide slide1 : slides) {
             for (Slide slide2 : slides) {
                 if(slide1 != slide2) {
                     PriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> new PriorityQueue<>());
                     queue.add(new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
+                }
+                if(i++ % 1_000_000 == 0) {
+                    System.out.println(i);
                 }
             }
         }
