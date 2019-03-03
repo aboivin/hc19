@@ -1,7 +1,7 @@
 import java.util.Objects;
 import java.util.StringJoiner;
 
-public class Node {
+public class Node implements Comparable<Node> {
 
     public final Slide slide;
 
@@ -33,4 +33,11 @@ public class Node {
         return Objects.hash(slide);
     }
 
+    @Override
+    public int compareTo(Node node) {
+        if(node.score == score) {
+            return 0;
+        }
+        return score > node.score ? -1 : 1; // reversed
+    }
 }

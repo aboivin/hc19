@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
@@ -69,24 +68,22 @@ public class Parser {
     }
 
     private static List<Slide> generateSlideShow(List<Slide> fullSlides) {
-        Map<Slide, Queue<Node>> graph = buildGraph(fullSlides);
+        Map<Slide, PriorityQueue<Node>> graph = buildGraph(fullSlides);
 
         List<Slide> slides = new ArrayList<>();
         int bip = 0;
         final AtomicReference<Slide> currentSlide = new AtomicReference<>(findBest(graph).get().slide);
         slides.add(currentSlide.get());
         while (true) {
-            List<Node> nextNodes = graph.get(currentSlide.get());
+            PriorityQueue<Node> nextNodes = graph.get(currentSlide.get());
             graph.remove(currentSlide.get());
 
 //            nextNodes.removeIf(node -> slides.contains(node.slide));
-            int bestScore = -1;
-            Node bestNode = null;
-            for (Node nextNode : nextNodes) {
-                if(nextNode.score > bestScore) {
-                    bestNode = nextNode;
-                }
-            }
+            Node bestNode;
+            do {
+                bestNode = nextNodes.poll();
+            } while (bestNode != null && slides.contains(bestNode.slide));
+
 //            Optional<Node> nextNode = nextNodes.stream().sorted(scoreComparator.reversed()).findFirst();
             if (bestNode == null) {
                 break;
@@ -97,10 +94,8 @@ public class Parser {
                 nextSlide = findBest(graph).map(t -> t.slide).get();
             }
 
-            graph.values().forEach(l -> l.stream()
-                                         .filter(node -> node.slide.equals(currentSlide.get()))
-                                         .forEach(n -> n.score = -2));
 
+     //       graph.values().forEach(q -> q.removeIf(node -> node.slide.equals(currentSlide.get())));
             currentSlide.set(nextSlide);
             if (bip++ % 100 == 0) {
                 System.out.println(bip);
@@ -111,13 +106,13 @@ public class Parser {
         return slides;
     }
 
-    private static Map<Slide, List<Node>> buildGraph(List<Slide> slides) {
-        Map<Slide, List<Node>> multimap = new HashMap<>();
+    private static Map<Slide, PriorityQueue<Node>> buildGraph(List<Slide> slides) {
+        Map<Slide, PriorityQueue<Node>> multimap = new HashMap<>();
         for (Slide slide1 : slides) {
             for (Slide slide2 : slides) {
                 if(slide1 != slide2) {
-                    List<Node> list = multimap.computeIfAbsent(slide1, s -> new ArrayList<>());
-                    list.add(new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
+                    PriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> new PriorityQueue<>());
+                    queue.add(new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
                 }
             }
         }
@@ -129,19 +124,10 @@ public class Parser {
         return slides.size() + "\n" + slides.stream().map(s -> s.picture1.id + (s.picture2 != null ? " " + s.picture2.id : "")).collect(joining("\n"));
     }
 
-    private static Optional<Tuple> findBest(Map<Slide, List<Node>> multiMap) {
-        PriorityQueue q = new PriorityQueue();
-        q.peek()
+    private static Optional<Tuple> findBest(Map<Slide, PriorityQueue<Node>> multiMap) {
         List<Tuple> bestTuples = new ArrayList<>();
         multiMap.forEach((slide, nodes) -> {
-            Node maxNode = null;
-            long bestScore = -1;
-            for (Node node : nodes) {
-                if(node.score > bestScore) {
-                    bestScore = node.score;
-                    maxNode = node;
-                }
-            }
+            Node maxNode = nodes.peek();
             bestTuples.add(new Tuple(slide, maxNode));
         });
 
