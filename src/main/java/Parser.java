@@ -24,7 +24,7 @@ public class Parser {
     private static final String D_PATH = "/home/aboivin/workspace/hc19/src/main/resources/d_pet_pictures.txt";
     private static final String E_PATH = "/home/aboivin/workspace/hc19/src/main/resources/e_shiny_selfies.txt";
 
-    private static final int CHUNK_SIZE = 5_000;
+    private static final int CHUNK_SIZE = 10_000;
 
     public static void main(String[] args) throws IOException {
         List<String> lines = Files.lines(Paths.get(B_PATH)).skip(1).collect(toList());
