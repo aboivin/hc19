@@ -35,5 +35,22 @@
         </dependency>
 
     </dependencies>
-
+<build>
+    <plugins>
+    <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <configuration>
+            <executable>java</executable>
+            <classpathScope>test</classpathScope>
+            <longClasspath>true</longClasspath>
+            <mainClass>Parser</mainClass>
+            <arguments>
+                <argument>-Xmx10g</argument>
+            </arguments>
+        </configuration>
+    </plugin>
+    </plugins>
+</build>
 </project>
