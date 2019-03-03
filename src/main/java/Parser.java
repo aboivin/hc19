@@ -1,4 +1,3 @@
-import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import java.io.BufferedWriter;
@@ -9,11 +8,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
@@ -69,10 +69,9 @@ public class Parser {
     }
 
     private static List<Slide> generateSlideShow(List<Slide> fullSlides) {
-        Map<Slide, List<Node>> graph = buildGraph(fullSlides);
+        Map<Slide, Queue<Node>> graph = buildGraph(fullSlides);
 
         List<Slide> slides = new ArrayList<>();
-        Comparator<Node> scoreComparator = comparing(node -> node.score);
         int bip = 0;
         final AtomicReference<Slide> currentSlide = new AtomicReference<>(findBest(graph).get().slide);
         slides.add(currentSlide.get());
@@ -81,17 +80,26 @@ public class Parser {
             graph.remove(currentSlide.get());
 
 //            nextNodes.removeIf(node -> slides.contains(node.slide));
-            Optional<Node> nextNode = nextNodes.stream().sorted(scoreComparator.reversed()).findFirst();
-            if (!nextNode.isPresent()) {
+            int bestScore = -1;
+            Node bestNode = null;
+            for (Node nextNode : nextNodes) {
+                if(nextNode.score > bestScore) {
+                    bestNode = nextNode;
+                }
+            }
+//            Optional<Node> nextNode = nextNodes.stream().sorted(scoreComparator.reversed()).findFirst();
+            if (bestNode == null) {
                 break;
             }
 
-            Slide nextSlide = nextNode.get().slide;
-            if(nextNode.get().score == 0) {
+            Slide nextSlide = bestNode.slide;
+            if(bestNode.score == 0) {
                 nextSlide = findBest(graph).map(t -> t.slide).get();
             }
 
-            graph.values().forEach(l -> l.removeIf(node -> node.slide.equals(currentSlide.get())));
+            graph.values().forEach(l -> l.stream()
+                                         .filter(node -> node.slide.equals(currentSlide.get()))
+                                         .forEach(n -> n.score = -2));
 
             currentSlide.set(nextSlide);
             if (bip++ % 100 == 0) {
@@ -122,13 +130,29 @@ public class Parser {
     }
 
     private static Optional<Tuple> findBest(Map<Slide, List<Node>> multiMap) {
-        Comparator<Tuple> comparing = comparing(tuple -> tuple.node.score);
-        Comparator<Node> comparing2 = comparing(node -> node.score);
-        return multiMap.keySet().stream().map(slide -> {
-            List<Node> nodes = multiMap.get(slide);
-            Node node = nodes.stream().sorted(comparing2.reversed()).findFirst().get();
-            return new Tuple(slide, node);
-        }).sorted(comparing.reversed()).findFirst();
+        PriorityQueue q = new PriorityQueue();
+        q.peek()
+        List<Tuple> bestTuples = new ArrayList<>();
+        multiMap.forEach((slide, nodes) -> {
+            Node maxNode = null;
+            long bestScore = -1;
+            for (Node node : nodes) {
+                if(node.score > bestScore) {
+                    bestScore = node.score;
+                    maxNode = node;
+                }
+            }
+            bestTuples.add(new Tuple(slide, maxNode));
+        });
+
+        Tuple best = null;
+        int score = -1;
+        for (Tuple bestTuple : bestTuples) {
+            if(bestTuple.node.score > score) {
+                best = bestTuple;
+            }
+        }
+        return Optional.ofNullable(best);
     }
 
     private static long computeScore(List<Slide> slides) {

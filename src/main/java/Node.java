@@ -5,9 +5,9 @@ public class Node {
 
     public final Slide slide;
 
-    public final long score;
+    public int score;
 
-    public Node(Slide slide, long score) {
+    public Node(Slide slide, int score) {
         this.slide = slide;
         this.score = score;
     }
@@ -32,4 +32,5 @@ public class Node {
     public int hashCode() {
         return Objects.hash(slide);
     }
+
 }
