@@ -25,7 +25,7 @@ public class SlideshowBuilder {
     private static final String D_PATH = "/home/aboivin/workspace/hc19/src/main/resources/d_pet_pictures.txt";
     private static final String E_PATH = "/home/aboivin/workspace/hc19/src/main/resources/e_shiny_selfies.txt";
 
-    private static final int CHUNK_SIZE = 1_000;
+    private static final int CHUNK_SIZE = 5_000;
     public static final int ITERATION = 1;
 
     public static void main(String[] args) throws IOException {
@@ -142,8 +142,8 @@ public class SlideshowBuilder {
                 if (slide1 != slide2) {
                     int score = ScoreComputer.computeScore(slide1, slide2);
                     if(score != 0) {
-                        MinMaxPriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> MinMaxPriorityQueue.<Node>maximumSize(400).create());
-                        Node node = queue.peekFirst();
+                        MinMaxPriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> MinMaxPriorityQueue.maximumSize(50).create());
+                        Node node = queue.peekLast();
                         if(node == null || node.score < score) {
                             queue.add(new Node(slide2, score));
                         }
