@@ -13,9 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
-import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
+import com.google.common.collect.MinMaxPriorityQueue;
 
 public class SlideshowBuilder {
 
@@ -25,8 +25,8 @@ public class SlideshowBuilder {
     private static final String D_PATH = "/home/aboivin/workspace/hc19/src/main/resources/d_pet_pictures.txt";
     private static final String E_PATH = "/home/aboivin/workspace/hc19/src/main/resources/e_shiny_selfies.txt";
 
-    private static final int CHUNK_SIZE = 20_000;
-    public static final int ITERATION = 4;
+    private static final int CHUNK_SIZE = 1_000;
+    public static final int ITERATION = 1;
 
     public static void main(String[] args) throws IOException {
         List<String> lines = Files.lines(Paths.get(E_PATH)).skip(1).collect(toList());
@@ -97,14 +97,14 @@ public class SlideshowBuilder {
     }
 
     private static List<Slide> generateSlideShow(List<Slide> fullSlides) {
-        Map<Slide, PriorityQueue<Node>> graph = buildGraph(fullSlides);
+        Map<Slide, MinMaxPriorityQueue<Node>> graph = buildGraph(fullSlides);
 
         List<Slide> slides = new ArrayList<>();
         int bip = 0;
         final AtomicReference<Slide> currentSlide = new AtomicReference<>(findBest(graph).get().slide);
         slides.add(currentSlide.get());
         while (true) {
-            PriorityQueue<Node> nextNodes = graph.get(currentSlide.get());
+            MinMaxPriorityQueue<Node> nextNodes = graph.get(currentSlide.get());
             graph.remove(currentSlide.get());
 
             Node bestNode;
@@ -134,16 +134,19 @@ public class SlideshowBuilder {
         return slides;
     }
 
-    private static Map<Slide, PriorityQueue<Node>> buildGraph(List<Slide> slides) {
+    private static Map<Slide, MinMaxPriorityQueue<Node>> buildGraph(List<Slide> slides) {
         long i = 0;
-        Map<Slide, PriorityQueue<Node>> multimap = new HashMap<>();
+        Map<Slide, MinMaxPriorityQueue<Node>> multimap = new HashMap<>();
         for (Slide slide1 : slides) {
             for (Slide slide2 : slides) {
                 if (slide1 != slide2) {
                     int score = ScoreComputer.computeScore(slide1, slide2);
                     if(score != 0) {
-                        PriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> new PriorityQueue<>());
-                        queue.add(new Node(slide2, score));
+                        MinMaxPriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> MinMaxPriorityQueue.<Node>maximumSize(400).create());
+                        Node node = queue.peekFirst();
+                        if(node == null || node.score < score) {
+                            queue.add(new Node(slide2, score));
+                        }
                     }
                 }
                 if (i++ % 10_000_000 == 0) {
@@ -159,7 +162,7 @@ public class SlideshowBuilder {
         return slides.size() + "\n" + slides.stream().map(s -> s.picture1Id + (s.picture2Id != null ? " " + s.picture2Id : "")).collect(joining("\n"));
     }
 
-    private static Optional<Tuple> findBest(Map<Slide, PriorityQueue<Node>> multiMap) {
+    private static Optional<Tuple> findBest(Map<Slide, MinMaxPriorityQueue<Node>> multiMap) {
         List<Tuple> bestTuples = new ArrayList<>();
         multiMap.forEach((slide, nodes) -> {
             Node maxNode = nodes.peek();
