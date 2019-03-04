@@ -2,55 +2,38 @@ import static java.lang.Math.min;
 
 public class ScoreComputer {
 
-    public static int computeScore(Slide slide1, Slide slide2) {
-        int intersection = 0, diff1 = 0, diff2 = 0;
-        int index1 = 0, index2 = 0;
-        Integer left, right;
-        boolean doneLeft = false, doneRight = false;
-        while(!doneLeft || !doneRight) {
-            left = slide1.keywords.get(index1);
-            right = slide2.keywords.get(index2);
-            if(left < right) {
-                diff1++;
-                if(index1 + 1 < slide1.keywords.size()) {
-                    index1++;
-                } else {
-                    doneLeft = true;
-                    if(index2 + 1 < slide2.keywords.size()) {
-                        index2++;
-                    } else {
-                        diff2++;
-                        break;
-                    }
-                }
-            } else if (right < left) {
-                diff2++;
-                if(index2 + 1 < slide2.keywords.size()) {
-                    index2++;
-                } else {
-                    doneRight = true;
-                    if(index1 + 1 < slide1.keywords.size()) {
-                        index1++;
-                    } else {
-                        diff1++;
-                        break;
-                    }
-                }
-            } else {
+    public static int computeScore(Slide slideLeft, Slide slideRight) {
+        int intersection = 0, diffLeft = 0, diffRight = 0;
+        int iLeft = 0, iRight = 0;
+        int leftSize = slideLeft.size();
+        int rightSize = slideRight.size();
+        while (!isDone(iLeft, leftSize) || !isDone(iRight, rightSize)) {
+            if (!isDone(iLeft, leftSize) && (isDone(iRight, rightSize) ||
+                    slideLeft.get(iLeft) < slideRight.get(iRight))) {
+                diffLeft++;
+                iLeft++;
+            } else if (!isDone(iRight, rightSize) && (isDone(iLeft, leftSize)
+                    || slideRight.get(iRight) < slideLeft.get(iLeft))) {
+                diffRight++;
+                iRight++;
+            } else if (slideRight.get(iRight) == slideLeft.get(iLeft)) {
                 intersection++;
-                if(index1 + 1 < slide1.keywords.size()) {
-                    index1++;
-                } else {
-                    doneLeft = true;
+                if (!isDone(iLeft, leftSize)) {
+                    iLeft++;
                 }
-                if(index2 + 1 < slide2.keywords.size()) {
-                    index2++;
-                } else {
-                    doneRight = true;
+                if (!isDone(iRight, rightSize)) {
+                    iRight++;
                 }
             }
         }
-        return min(min(intersection, diff1), diff2);
+//        System.out.println("intersection: " + intersection);
+//        System.out.println("diffLeft: " + diffLeft);
+//        System.out.println("diffRight: " + diffRight);
+        return min(min(intersection, diffLeft), diffRight);
+    }
+
+    private static boolean isDone(int i, int size) {
+        return i == size;
     }
 
 }

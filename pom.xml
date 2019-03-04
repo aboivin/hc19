@@ -45,7 +45,7 @@
             <executable>java</executable>
             <classpathScope>test</classpathScope>
             <longClasspath>true</longClasspath>
-            <mainClass>Parser</mainClass>
+            <mainClass>SlideshowBuilder</mainClass>
             <arguments>
                 <argument>-Xmx10g</argument>
                 <argument>-Xms10g</argument>

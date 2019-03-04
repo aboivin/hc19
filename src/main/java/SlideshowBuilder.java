@@ -17,7 +17,7 @@ import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
-public class Parser {
+public class SlideshowBuilder {
 
     private static final String A_PATH = "/home/aboivin/workspace/hc19/src/main/resources/a_example.txt";
     private static final String B_PATH = "/home/aboivin/workspace/hc19/src/main/resources/b_lovely_landscapes.txt";
@@ -26,12 +26,13 @@ public class Parser {
     private static final String E_PATH = "/home/aboivin/workspace/hc19/src/main/resources/e_shiny_selfies.txt";
 
     private static final int CHUNK_SIZE = 20_000;
+    public static final int ITERATION = 4;
 
     public static void main(String[] args) throws IOException {
         List<String> lines = Files.lines(Paths.get(E_PATH)).skip(1).collect(toList());
 
         Collection<Slide> slideShow = Collections.synchronizedCollection(new ArrayList<>());
-        IntStream.range(0, 4).forEach(chunk -> {
+        IntStream.range(0, ITERATION).forEach(chunk -> {
             System.out.println("======= CHUNK " + chunk + "===============");
             List<Picture> horizontalSlides = new ArrayList<>();
             List<Picture> verticalSlides = new ArrayList<>();
@@ -58,7 +59,7 @@ public class Parser {
 
         OptionalDouble average = verticalPics.stream().mapToInt(v -> v.keywords.size()).average();
         if(average.isPresent()) {
-            int threshold = (int) (2.5 * average.getAsDouble());
+            int threshold = (int) (2 * average.getAsDouble());
             List<Slide> verticalSlides = new ArrayList<>();
             int bip = 0;
             while (verticalPics.size() > 1) {
@@ -111,13 +112,16 @@ public class Parser {
                 bestNode = nextNodes.poll();
             } while (bestNode != null && slides.contains(bestNode.slide));
 
-            if (bestNode == null) {
-                break;
-            }
 
-            Slide nextSlide = bestNode.slide;
-            if (bestNode.score == 0) {
-                nextSlide = findBest(graph).map(t -> t.slide).get();
+            Slide nextSlide;
+            if (bestNode == null || bestNode.score == 0) {
+                Optional<Slide> nextSlide1 = findBest(graph).map(t -> t.slide);
+                if (!nextSlide1.isPresent()) {
+                    break;
+                }
+                nextSlide = nextSlide1.get();
+            } else {
+                nextSlide = bestNode.slide;
             }
 
             currentSlide.set(nextSlide);
@@ -136,10 +140,13 @@ public class Parser {
         for (Slide slide1 : slides) {
             for (Slide slide2 : slides) {
                 if (slide1 != slide2) {
-                    PriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> new PriorityQueue<>());
-                    queue.add(new Node(slide2, ScoreComputer.computeScore(slide1, slide2)));
+                    int score = ScoreComputer.computeScore(slide1, slide2);
+                    if(score != 0) {
+                        PriorityQueue<Node> queue = multimap.computeIfAbsent(slide1, s -> new PriorityQueue<>());
+                        queue.add(new Node(slide2, score));
+                    }
                 }
-                if (i++ % 1_000_000 == 0) {
+                if (i++ % 10_000_000 == 0) {
                     System.out.println(i);
                 }
             }
@@ -149,7 +156,7 @@ public class Parser {
     }
 
     private static String formatResult(Collection<Slide> slides) {
-        return slides.size() + "\n" + slides.stream().map(s -> s.picture1.id + (s.picture2 != null ? " " + s.picture2.id : "")).collect(joining("\n"));
+        return slides.size() + "\n" + slides.stream().map(s -> s.picture1Id + (s.picture2Id != null ? " " + s.picture2Id : "")).collect(joining("\n"));
     }
 
     private static Optional<Tuple> findBest(Map<Slide, PriorityQueue<Node>> multiMap) {
@@ -171,17 +178,14 @@ public class Parser {
 
     private static long computeScore(List<Slide> slides) {
         long score = 0;
-        for (int i = 0; i < slides.size(); i++) {
-            if (i == 0) {
-                continue;
-            }
-            score += ScoreComputer.computeScore(slides.get(i - 1), slides.get(i));
+        for (int i = 0; i < slides.size() - 1; i++) {
+            score += ScoreComputer.computeScore(slides.get(i), slides.get(i + 1));
         }
         return score;
     }
 
     private static void write(String content) throws IOException {
-        Path path = Paths.get("/home/aboivin/workspace/hc19/src/main/resources/output.txt");
+        Path path = Paths.get("/home/aboivin/workspace/hc19/src/main/java/output.txt");
 
         try (BufferedWriter writer = Files.newBufferedWriter(path)) {
             writer.write(content);
